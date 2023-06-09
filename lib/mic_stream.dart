@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:permission_handler/permission_handler.dart' as handler;
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart' as handler;
 
 // In reference to the implementation of the official sensors plugin
 // https://github.com/flutter/plugins/tree/master/packages/sensors
@@ -49,19 +49,16 @@ class MicStream {
       MethodChannel('aaron.code.com/mic_stream_method_channel');
 
   /// The actual sample rate used for streaming.  This may return zero if invoked without listening to the _microphone Stream
-  static Future<double>? get sampleRate => _sampleRate;
-
-  static Future<double>? _sampleRate;
+  static Future<double> get sampleRate => _sampleRateCompleter.future;
+  static Completer<double> _sampleRateCompleter = new Completer<double>();
 
   /// The actual bit depth used for streaming. This may return zero if invoked without listening to the _microphone Stream first.
-  static Future<int>? get bitDepth => _bitDepth;
-
-  static Future<int>? _bitDepth;
+  static Future<int> get bitDepth => _bitDepthCompleter.future;
+  static Completer<int> _bitDepthCompleter = new Completer<int>();
 
   /// The amount of recorded data, per sample, in bytes
-  static Future<int>? get bufferSize => _bufferSize;
-
-  static Future<int>? _bufferSize;
+  static Future<int> get bufferSize => _bufferSizeCompleter.future;
+  static Completer<int> _bufferSizeCompleter = new Completer<int>();
 
   /// The configured microphone stream and its config
   static Stream<Uint8List>? _microphone;
@@ -90,27 +87,48 @@ class MicStream {
   /// channelConfig:   States whether audio is mono or stereo
   /// audioFormat:     Switch between 8- and 16-bit PCM streams
   ///
-  static Future<Stream<Uint8List>?> microphone(
+  static Stream<Uint8List> microphone(
       {AudioSource? audioSource,
       int? sampleRate,
       ChannelConfig? channelConfig,
-      AudioFormat? audioFormat}) async {
+      AudioFormat? audioFormat}) {
     audioSource ??= DEFAULT_AUDIO_SOURCE;
     sampleRate ??= DEFAULT_SAMPLE_RATE;
     channelConfig ??= DEFAULT_CHANNELS_CONFIG;
     audioFormat ??= DEFAULT_AUDIO_FORMAT;
 
     if (sampleRate < _MIN_SAMPLE_RATE || sampleRate > _MAX_SAMPLE_RATE)
-      throw (RangeError.range(sampleRate, _MIN_SAMPLE_RATE, _MAX_SAMPLE_RATE));
-    if (_requestPermission) if (!(await permissionStatus))
-      throw (PlatformException);
+      return Stream.error(
+          RangeError.range(sampleRate, _MIN_SAMPLE_RATE, _MAX_SAMPLE_RATE));
 
+    final initStream = _requestPermission
+        ? Stream.fromFuture(permissionStatus)
+        : Stream.value(true);
+
+    return initStream.asyncExpand((grantedPermission) {
+      if (!grantedPermission) {
+        throw Exception('Microphone permission is not granted');
+      }
+      return _setupMicStream(
+        audioSource!,
+        sampleRate!,
+        channelConfig!,
+        audioFormat!,
+      );
+    });
+  }
+
+  static Stream<Uint8List> _setupMicStream(
+    AudioSource audioSource,
+    int sampleRate,
+    ChannelConfig channelConfig,
+    AudioFormat audioFormat,
+  ) {
     // If first time or configs have changed reinitialise audio recorder
     if (audioSource != __audioSource ||
         sampleRate != __sampleRate ||
         channelConfig != __channelConfig ||
         audioFormat != __audioFormat) {
-      //TODO: figure out whether the old stream needs to be cancelled
       _microphone = _microphoneEventChannel.receiveBroadcastStream([
         audioSource.index,
         sampleRate,
@@ -123,29 +141,29 @@ class MicStream {
       __audioFormat = audioFormat;
     }
 
+    if (_microphone == null) {
+      return Stream.error(StateError);
+    }
+
     // sampleRate/bitDepth should be populated before any attempt to consume the stream externally.
     // configure these as Completers and listen to the stream internally before returning
     // these will complete only when this internal listener is called
+    _sampleRateCompleter = new Completer();
+    _bitDepthCompleter = new Completer();
+    _bufferSizeCompleter = new Completer();
     StreamSubscription<Uint8List>? listener;
-    var sampleRateCompleter = new Completer<double>();
-    var bitDepthCompleter = new Completer<int>();
-    var bufferSizeCompleter = new Completer<int>();
-    _sampleRate = sampleRateCompleter.future;
-    _bitDepth = bitDepthCompleter.future;
-    _bufferSize = bufferSizeCompleter.future;
-
     listener = _microphone!.listen((x) async {
       await listener!.cancel();
       listener = null;
-      sampleRateCompleter.complete(await _microphoneMethodChannel
-          .invokeMethod("getSampleRate") as double?);
-      bitDepthCompleter.complete(
-          await _microphoneMethodChannel.invokeMethod("getBitDepth") as int?);
-      bufferSizeCompleter.complete(
-          await _microphoneMethodChannel.invokeMethod("getBufferSize") as int?);
+      _sampleRateCompleter.complete(await _microphoneMethodChannel
+          .invokeMethod("getSampleRate") as double);
+      _bitDepthCompleter.complete(
+          await _microphoneMethodChannel.invokeMethod("getBitDepth") as int);
+      _bufferSizeCompleter.complete(
+          await _microphoneMethodChannel.invokeMethod("getBufferSize") as int);
     });
 
-    return _microphone;
+    return _microphone!;
   }
 
   /// Updates flag to determine whether to request audio recording permission. Set to false to disable dialogue, set to true (default) to request permission if necessary

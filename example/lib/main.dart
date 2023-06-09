@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:core';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -23,7 +24,7 @@ class MicStreamExampleApp extends StatefulWidget {
 
 class _MicStreamExampleAppState extends State<MicStreamExampleApp>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  Stream? stream;
+  Stream<Uint8List>? stream;
   late StreamSubscription listener;
   List<int>? currentSamples = [];
   List<int> visibleSamples = [];
@@ -48,7 +49,7 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
   void initState() {
     print("Init application");
     super.initState();
-    WidgetsBinding.instance!.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
     setState(() {
       initPlatformState();
     });
@@ -88,31 +89,33 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
     // Default option. Set to false to disable request permission dialogue
     MicStream.shouldRequestPermission(true);
 
-    stream = await MicStream.microphone(
+    stream = MicStream.microphone(
         audioSource: AudioSource.DEFAULT,
         // sampleRate: 1000 * (rng.nextInt(50) + 30),
         sampleRate: 48000,
         channelConfig: ChannelConfig.CHANNEL_IN_MONO,
         audioFormat: AUDIO_FORMAT);
+    listener = stream!.listen(_calculateSamples);
+
     // after invoking the method for the first time, though, these will be available;
     // It is not necessary to setup a listener first, the stream only needs to be returned first
-    print(
-        "Start Listening to the microphone, sample rate is ${await MicStream.sampleRate}, bit depth is ${await MicStream.bitDepth}, bufferSize: ${await MicStream.bufferSize}");
-    bytesPerSample = (await MicStream.bitDepth)! ~/ 8;
-    samplesPerSecond = (await MicStream.sampleRate)!.toInt();
+    print("Start Listening to the microphone, sample rate is ${await MicStream.sampleRate}, bit depth is ${await MicStream.bitDepth}, bufferSize: ${await MicStream.bufferSize}");
+
     localMax = null;
     localMin = null;
 
+    visibleSamples = [];
+    bytesPerSample = (await MicStream.bitDepth)! ~/ 8;
+    samplesPerSecond = (await MicStream.sampleRate)!.toInt();
     setState(() {
       isRecording = true;
       startTime = DateTime.now();
     });
-    visibleSamples = [];
-    listener = stream!.listen(_calculateSamples);
     return true;
   }
 
-  void _calculateSamples(samples) {
+  void _calculateSamples(samples) async {
+    // print("Sample rate is ${await MicStream.sampleRate}, bit depth is ${await MicStream.bitDepth}, bufferSize: ${await MicStream.bufferSize}");
     if (page == 0) _calculateWaveSamples(samples);
     else if (page == 1) _calculateIntensitySamples(samples);
   }
@@ -138,7 +141,6 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
       }
       first = !first;
     }
-    print(visibleSamples.length);
   }
 
   void _calculateIntensitySamples(samples) {
@@ -273,7 +275,7 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
   void dispose() {
     listener.cancel();
     controller.dispose();
-    WidgetsBinding.instance!.removeObserver(this);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }
