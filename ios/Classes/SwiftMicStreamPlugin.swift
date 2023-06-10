@@ -27,7 +27,7 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
     registrar.addMethodCallDelegate(instance, channel: methodChannel)
   }
 
-  let isRecording: Bool = false
+  var isRecording: Bool = false
   var CHANNEL_CONFIG: ChannelConfig = ChannelConfig.CHANNEL_IN_MONO
   var SAMPLE_RATE: Int = 44100  // this is the sample rate the user wants
   var actualSampleRate: Float64?  // this is the actual hardware sample rate the device is using
@@ -57,8 +57,8 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
   }
 
   public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-    self.session?.stopRunning()
-    self.audioSession?.setActive(false)
+    try self.session?.stopRunning()
+    try self.audioSession?.setActive(false)
     self.audioSession?.setCategory(originalCategory)
     isRecording = false
     return nil
