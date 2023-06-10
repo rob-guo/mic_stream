@@ -57,8 +57,17 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
   }
 
   public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-    try self.session?.stopRunning()
-    try self.audioSession?.setActive(false)
+    do {
+      try self.session?.stopRunning()
+      try self.audioSession?.setActive(false)
+    } catch let e {
+      self.eventSink!(
+        FlutterError(
+          code: "-3",
+          message: "Error encountered stopping audio capture, see details for more information.",
+          details: e))
+    }
+
     self.audioSession?.setCategory(originalCategory)
     isRecording = false
     return nil
