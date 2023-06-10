@@ -60,7 +60,7 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
     do {
       try self.session?.stopRunning()
       try self.audioSession?.setActive(false)
-      try self.audioSession?.setCategory(originalCategory)
+      // try self.audioSession?.setCategory(originalCategory)
       isRecording = false
     } catch let e {
       self.eventSink!(
