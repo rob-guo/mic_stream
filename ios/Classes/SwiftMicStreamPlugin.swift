@@ -27,7 +27,6 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
     registrar.addMethodCallDelegate(instance, channel: methodChannel)
   }
 
-  var isRecording: Bool = false
   var CHANNEL_CONFIG: ChannelConfig = ChannelConfig.CHANNEL_IN_MONO
   var SAMPLE_RATE: Int = 44100  // this is the sample rate the user wants
   var actualSampleRate: Float64?  // this is the actual hardware sample rate the device is using
@@ -61,7 +60,6 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
       try self.session?.stopRunning()
       try self.audioSession?.setActive(false)
       // try self.audioSession?.setCategory(originalCategory)
-      isRecording = false
     } catch let e {
       self.eventSink!(
         FlutterError(
@@ -76,15 +74,6 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
   public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
     -> FlutterError?
   {
-
-    if isRecording {
-      events(
-        FlutterError(
-          code: "-3",
-          message: "onListen called while recording", details: nil))
-      return nil
-    }
-    isRecording = true
 
     let config = arguments as! [Int?]
     // Set parameters, if available
