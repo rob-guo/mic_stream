@@ -66,6 +66,7 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
           code: "-3",
           message: "Error encountered stopping audio capture, see details for more information.",
           details: e))
+      return nil
     }
 
     self.audioSession?.setCategory(originalCategory)
