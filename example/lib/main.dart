@@ -58,7 +58,7 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
   void _controlPage(int index) => setState(() => page = index);
 
   // Responsible for switching between recording / idle state
-  void _controlMicStream({Command command: Command.change}) async {
+  void _controlMicStream({Command command = Command.change}) async {
     switch (command) {
       case Command.change:
         _changeListening();
@@ -99,14 +99,15 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
 
     // after invoking the method for the first time, though, these will be available;
     // It is not necessary to setup a listener first, the stream only needs to be returned first
-    print("Start Listening to the microphone, sample rate is ${await MicStream.sampleRate}, bit depth is ${await MicStream.bitDepth}, bufferSize: ${await MicStream.bufferSize}");
+    print(
+        "Start Listening to the microphone, sample rate is ${await MicStream.sampleRate}, bit depth is ${await MicStream.bitDepth}, bufferSize: ${await MicStream.bufferSize}");
 
     localMax = null;
     localMin = null;
 
     visibleSamples = [];
-    bytesPerSample = (await MicStream.bitDepth)! ~/ 8;
-    samplesPerSecond = (await MicStream.sampleRate)!.toInt();
+    bytesPerSample = (await MicStream.bitDepth) ~/ 8;
+    samplesPerSecond = (await MicStream.sampleRate).toInt();
     setState(() {
       isRecording = true;
       startTime = DateTime.now();
@@ -116,7 +117,8 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
 
   void _calculateSamples(samples) async {
     // print("Sample rate is ${await MicStream.sampleRate}, bit depth is ${await MicStream.bitDepth}, bufferSize: ${await MicStream.bufferSize}");
-    if (page == 0) _calculateWaveSamples(samples);
+    if (page == 0)
+      _calculateWaveSamples(samples);
     else if (page == 1) _calculateIntensitySamples(samples);
   }
 
@@ -155,8 +157,7 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
     });
 
     if (currentSamples!.length >= samplesPerSecond / 10) {
-      visibleSamples
-          .add(currentSamples!.map((i) => i).toList().reduce((a, b) => a + b));
+      visibleSamples.add(currentSamples!.map((i) => i).toList().reduce((a, b) => a + b));
       localMax ??= visibleSamples.last;
       localMin ??= visibleSamples.last;
       localMax = max(localMax!, visibleSamples.last);
@@ -186,21 +187,20 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
 
     Statistics(false);
 
-    controller =
-        AnimationController(duration: Duration(seconds: 1), vsync: this)
-          ..addListener(() {
-            if (isRecording) setState(() {});
-          })
-          ..addStatusListener((status) {
-            if (status == AnimationStatus.completed) controller.reverse();
-            else if (status == AnimationStatus.dismissed) controller.forward();
-          })
-          ..forward();
+    controller = AnimationController(duration: Duration(seconds: 1), vsync: this)
+      ..addListener(() {
+        if (isRecording) setState(() {});
+      })
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed)
+          controller.reverse();
+        else if (status == AnimationStatus.dismissed) controller.forward();
+      })
+      ..forward();
   }
 
   Color _getBgColor() => (isRecording) ? Colors.red : Colors.cyan;
-  Icon _getIcon() =>
-      (isRecording) ? Icon(Icons.stop) : Icon(Icons.keyboard_voice);
+  Icon _getIcon() => (isRecording) ? Icon(Icons.stop) : Icon(Icons.keyboard_voice);
 
   @override
   Widget build(BuildContext context) {
@@ -260,8 +260,7 @@ class _MicStreamExampleAppState extends State<MicStreamExampleApp>
       isActive = true;
       print("Resume app");
 
-      _controlMicStream(
-          command: memRecordingState ? Command.start : Command.stop);
+      _controlMicStream(command: memRecordingState ? Command.start : Command.stop);
     } else if (isActive) {
       memRecordingState = isRecording;
       _controlMicStream(command: Command.stop);
@@ -293,8 +292,7 @@ class WavePainter extends CustomPainter {
   // int absMax = 255*4; //(AUDIO_FORMAT == AudioFormat.ENCODING_PCM_8BIT) ? 127 : 32767;
   // int absMin; //(AUDIO_FORMAT == AudioFormat.ENCODING_PCM_8BIT) ? 127 : 32767;
 
-  WavePainter(
-      {this.samples, this.color, this.context, this.localMax, this.localMin});
+  WavePainter({this.samples, this.color, this.context, this.localMax, this.localMin});
 
   @override
   void paint(Canvas canvas, Size? size) {
@@ -325,19 +323,15 @@ class WavePainter extends CustomPainter {
     if (samples == null) samples = List<int>.filled(size!.width.toInt(), (0.5).toInt());
     double pixelsPerSample = size!.width / samples.length;
     for (int i = 0; i < samples.length; i++) {
-      var point = Offset(
-          i * pixelsPerSample,
-          0.5 *
-              size!.height *
-              pow((samples[i] - localMin!) / (localMax! - localMin!), 5));
+      var point = Offset(i * pixelsPerSample,
+          0.5 * size!.height * pow((samples[i] - localMin!) / (localMax! - localMin!), 5));
       points.add(point);
     }
     return points;
   }
 
   double project(int val, int max, double height) {
-    double waveHeight =
-        (max == 0) ? val.toDouble() : (val / max) * 0.5 * height;
+    double waveHeight = (max == 0) ? val.toDouble() : (val / max) * 0.5 * height;
     return waveHeight + 0.5 * height;
   }
 }
@@ -353,24 +347,20 @@ class Statistics extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(children: <Widget>[
-      ListTile(
-          leading: Icon(Icons.title),
-          title: Text("Microphone Streaming Example App")),
+      ListTile(leading: Icon(Icons.title), title: Text("Microphone Streaming Example App")),
       ListTile(
         leading: Icon(Icons.keyboard_voice),
         title: Text((isRecording ? "Recording" : "Not recording")),
       ),
       ListTile(
           leading: Icon(Icons.access_time),
-          title: Text((isRecording
-              ? DateTime.now().difference(startTime!).toString()
-              : "Not recording"))),
+          title: Text(
+              (isRecording ? DateTime.now().difference(startTime!).toString() : "Not recording"))),
     ]);
   }
 }
 
-Iterable<T> eachWithIndex<E, T>(
-    Iterable<T> items, E Function(int index, T item) f) {
+Iterable<T> eachWithIndex<E, T>(Iterable<T> items, E Function(int index, T item) f) {
   var index = 0;
 
   for (final item in items) {

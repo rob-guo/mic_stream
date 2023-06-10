@@ -38,6 +38,7 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
   var eventSink: FlutterEventSink?
   var session: AVCaptureSession!
   var audioSession: AVAudioSession!
+  var originalCategory: AVAudioSession.Category!
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
@@ -57,6 +58,9 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
 
   public func onCancel(withArguments arguments: Any?) -> FlutterError? {
     self.session?.stopRunning()
+    self.audioSession?.setActive(false)
+    self.audioSession?.setCategory(originalCategory)
+    isRecording = false
     return nil
   }
 
@@ -65,8 +69,13 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
   {
 
     if isRecording {
+      events(
+        FlutterError(
+          code: "-3",
+          message: "onListen called while recording", details: nil))
       return nil
     }
+    isRecording = true
 
     let config = arguments as! [Int?]
     // Set parameters, if available
@@ -129,14 +138,11 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
       self.session = AVCaptureSession()
       self.audioSession = AVAudioSession.sharedInstance()
       do {
-        //magic word
-        //This will allow developers to specify sample rates, etc.
+        originalCategory = audioSession.category
+
         try session.automaticallyConfiguresApplicationAudioSession = false
-
         try audioCaptureDevice.lockForConfiguration()
-
         try audioSession.setCategory(AVAudioSession.Category.record, mode: .measurement)
-
         try audioSession.setPreferredSampleRate(Double(SAMPLE_RATE))
 
         //Calculate the time required for BufferSize
