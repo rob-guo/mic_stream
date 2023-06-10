@@ -60,6 +60,8 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
     do {
       try self.session?.stopRunning()
       try self.audioSession?.setActive(false)
+      self.audioSession?.setCategory(originalCategory)
+      isRecording = false
     } catch let e {
       self.eventSink!(
         FlutterError(
@@ -68,9 +70,6 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
           details: e))
       return nil
     }
-
-    self.audioSession?.setCategory(originalCategory)
-    isRecording = false
     return nil
   }
 
